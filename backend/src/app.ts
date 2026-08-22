@@ -11,6 +11,7 @@ import multipartPlugin from "./plugins/multipart.js";
 import pushPlugin from "./plugins/push.js";
 import notificationsPlugin from "./plugins/notifications.js";
 import healthRoute from "./routes/health.js";
+import versionRoute from "./routes/version.js";
 import authRoutes from "./routes/auth/index.js";
 import documentsRoutes from "./routes/documents/index.js";
 import tagsRoutes from "./routes/tags/index.js";
@@ -87,6 +88,7 @@ export async function buildApp() {
   fastify.get("/health", async () => ({ status: "ok" }));
 
   await fastify.register(healthRoute, { prefix: "/api" });
+  await fastify.register(versionRoute, { prefix: "/api/version" });
   await fastify.register(authRoutes, { prefix: "/api/auth" });
   await fastify.register(documentsRoutes, { prefix: "/api/documents" });
   await fastify.register(tagsRoutes, { prefix: "/api/tags" });

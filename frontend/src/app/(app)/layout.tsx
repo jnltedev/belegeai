@@ -6,6 +6,7 @@ import { Topbar } from "@/components/app-shell/topbar";
 import { ChatWidget } from "@/components/chat-widget";
 import { getLogoUrl } from "@/lib/branding";
 import { Footer } from "@/components/app-shell/footer";
+import { UpdateNotice } from "@/components/app-shell/update-notice";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
@@ -34,6 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Footer />
       </div>
       <ChatWidget logoUrl={logoUrl} />
+      <UpdateNotice isAdmin={user.role === "admin"} />
     </div>
   );
 }

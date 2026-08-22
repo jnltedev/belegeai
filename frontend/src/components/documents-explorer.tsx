@@ -387,6 +387,11 @@ function FilterDateInput({ value, onCommit }: { value: string; onCommit: (value:
   function commit(next: string) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = null;
+    // A half-typed year is a perfectly valid date: after the first digit of
+    // 2026 the field already reads 0002-03-26. Committing that would apply a
+    // nonsense filter and, worse, feed it straight back into the field.
+    if (next && !/^\d{4}-/.test(next)) return;
+    if (next && Number(next.slice(0, 4)) < 1000) return;
     if ((next || null) !== (value || null)) onCommit(next || null);
   }
 

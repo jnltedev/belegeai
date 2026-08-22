@@ -1,3 +1,5 @@
+import { VersionBadge } from "./version-badge";
+
 const COPYRIGHT_FROM = 2020;
 const AUTHOR = "Justin Nolte";
 const AUTHOR_URL = "https://jnlte.de";
@@ -43,6 +45,10 @@ export function Footer() {
         >
           <GithubMark />
         </a>
+        {/* Client-side: the version comes from the API rather than the
+            rendering process, so it is the backend's version that is shown,
+            which is the one that matters when reporting a problem. */}
+        <VersionBadge />
       </div>
     </footer>
   );
