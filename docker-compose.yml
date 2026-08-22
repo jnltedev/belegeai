@@ -1,0 +1,139 @@
+name: belegeai
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: belege
+      POSTGRES_PASSWORD: belege
+      POSTGRES_DB: belegeai
+    ports:
+      # Bound to localhost only - not reachable from the LAN or internet,
+      # just from this host (e.g. for psql/isolated-stack testing).
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U belege -d belegeai"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      # Same as postgres above - admin/testing access from this host only.
+      - "127.0.0.1:${MINIO_API_PORT:-9002}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9003}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+  backend:
+    # Published by .github/workflows/docker-publish.yml. To build from source
+    # instead, add the override file:
+    #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+    image: ${IMAGE_NAMESPACE:-jnltedev}/belegeai-backend:${IMAGE_TAG:-latest}
+    ports:
+      # Loopback only - the frontend reaches it over the internal docker
+      # network (API_INTERNAL_URL below) and proxies everything publicly.
+      # This binding is just for host-local debugging (curl, isolated-stack
+      # testing).
+      - "127.0.0.1:${BACKEND_PORT:-4001}:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=postgres://belege:belege@postgres:5432/belegeai
+      - AUTH_MODE=${AUTH_MODE:-local}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=belege-documents
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-25}
+      # AI provider: gemini | openai | anthropic. One naming scheme for all
+      # three; leave AI_API_KEY empty to run the archive fully manually.
+      - AI_PROVIDER=${AI_PROVIDER:-gemini}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_EMBEDDING_MODEL=${AI_EMBEDDING_MODEL:-}
+      # Deprecated, read only so an existing deployment keeps working.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-}
+      - FRONTEND_ORIGIN=${PUBLIC_APP_URL:-http://localhost:3005}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - COOKIE_SAME_SITE=${COOKIE_SAME_SITE:-lax}
+      - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY}
+      - INTERNAL_INGEST_SECRET=${INTERNAL_INGEST_SECRET}
+      - DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE:-de}
+      # Only needed to point at a self-run push proxy; empty falls back to
+      # the project's own. The proxy is a separate project with its own repo.
+      - APNS_PUSH_PROXY_URL=${APNS_PUSH_PROXY_URL:-}
+      # Deprecated, read only so an existing deployment keeps working.
+      - PUSH_PROXY_URL=${PUSH_PROXY_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingest-worker:
+    image: ${IMAGE_NAMESPACE:-jnltedev}/belegeai-ingest-worker:${IMAGE_TAG:-latest}
+    environment:
+      - DATABASE_URL=postgres://belege:belege@postgres:5432/belegeai
+      - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY}
+      - INTERNAL_INGEST_SECRET=${INTERNAL_INGEST_SECRET}
+      - BACKEND_INTERNAL_URL=http://backend:4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    image: ${IMAGE_NAMESPACE:-jnltedev}/belegeai-frontend:${IMAGE_TAG:-latest}
+    ports:
+      - "${FRONTEND_PORT:-3005}:3005"
+    environment:
+      # Only reachable inside the docker network - the backend is never
+      # exposed publicly. The frontend proxies every /api/* request to it
+      # (see src/app/api/[...path]/route.ts), so this is the only service
+      # a reverse proxy/tunnel needs to know about from the outside.
+      - API_INTERNAL_URL=http://backend:4000
+      # Optional custom logo - see LOGO_FILENAME in .env. Read at request
+      # time (not baked into the client bundle), so changing it only needs
+      # a container restart, not a rebuild.
+      - LOGO_FILENAME=${LOGO_FILENAME:-}
+      # Fallback UI language for logged-out pages (login/register) and for
+      # any logged-in user who hasn't picked one yet - same default as the
+      # backend's DEFAULT_LANGUAGE, read server-side only (see lib/i18n).
+      - DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE:-de}
+    volumes:
+      # Drop a .png or .svg logo file into ./branding/ on the host and
+      # point LOGO_FILENAME at its filename - served by Next's own static
+      # handler straight from this mount, no rebuild needed.
+      - ./branding:/app/public/branding:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:

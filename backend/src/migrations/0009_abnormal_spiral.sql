@@ -1,0 +1,2 @@
+ALTER TABLE "documents" ADD COLUMN "api_key_id" uuid;--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_api_key_id_api_keys_id_fk" FOREIGN KEY ("api_key_id") REFERENCES "public"."api_keys"("id") ON DELETE no action ON UPDATE no action;

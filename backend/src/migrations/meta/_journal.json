@@ -1,0 +1,146 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1787243595335,
+      "tag": "0000_wooden_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787245213633,
+      "tag": "0001_grey_manta",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787247746245,
+      "tag": "0002_aspiring_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787250153765,
+      "tag": "0003_organic_shape",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787251398131,
+      "tag": "0004_flowery_forge",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787251423938,
+      "tag": "0005_even_lily_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787283464381,
+      "tag": "0006_add_search_vector",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787288616299,
+      "tag": "0007_silent_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787288776206,
+      "tag": "0008_condemned_phil_sheldon",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787289163858,
+      "tag": "0009_abnormal_spiral",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787294966130,
+      "tag": "0010_furry_baron_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787304955750,
+      "tag": "0011_polite_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787307994525,
+      "tag": "0012_broken_miracleman",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787323558680,
+      "tag": "0013_silent_aqueduct",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1787325356031,
+      "tag": "0014_nifty_whiplash",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787336879369,
+      "tag": "0015_magical_living_mummy",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787371820150,
+      "tag": "0016_good_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787371821150,
+      "tag": "0017_push_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787371822150,
+      "tag": "0018_invites_and_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787371823150,
+      "tag": "0019_user_deletion",
+      "breakpoints": true
+    }
+  ]
+}

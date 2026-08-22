@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.next/
+.env
+*.log
+.DS_Store
+frontend/public/pdf.worker.min.mjs
+frontend/public/pdf-cmaps/
+frontend/public/pdf-standard-fonts/
+frontend/public/pdf-wasm/
+branding/*
+!branding/.gitkeep
+!branding/README.md
