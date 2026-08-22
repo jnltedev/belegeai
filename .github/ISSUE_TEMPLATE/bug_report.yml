@@ -1,0 +1,99 @@
+name: Bug report
+description: Something behaves differently than it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The fields below are the ones that
+        usually decide whether a problem can be reproduced at all.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I am not reporting a security vulnerability (those go through the security policy).
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the result was.
+      placeholder: |
+        I uploaded a scanned invoice as PDF. The extraction returned no
+        document type and every field stayed empty.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from a fresh page if possible.
+      placeholder: |
+        1. Sign in as an administrator
+        2. Open Documents and drop a PDF onto the upload area
+        3. Wait for the extraction to finish
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag from IMAGE_TAG, or the commit you built from.
+      placeholder: "latest, 1.0.0, or commit 27a2e2b"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How is it running
+      options:
+        - Docker Compose with the published images
+        - Docker Compose built from source
+        - Something else (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: AI provider
+      description: Extraction and chat behave differently per provider, so this narrows things down quickly.
+      options:
+        - Google Gemini
+        - OpenAI
+        - Anthropic Claude
+        - None configured (manual archive)
+        - Not relevant to this problem
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        Output of `docker compose logs backend` (or frontend / ingest-worker)
+        around the time it happened. This is inserted as code, so no
+        backticks are needed.
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Screenshots, reverse proxy in front of it, unusual configuration.

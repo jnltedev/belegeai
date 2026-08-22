@@ -159,7 +159,11 @@ Database migrations live in `backend/src/migrations` and run with
 
 Issues and pull requests are welcome. Please open an issue before starting
 anything substantial, so nobody spends an evening on something that turns out
-not to fit.
+not to fit. [CONTRIBUTING.md](CONTRIBUTING.md) covers the development setup
+and what a change is expected to bring with it.
+
+Found a security problem? Do not open an issue; see
+[SECURITY.md](SECURITY.md).
 
 ## License
 

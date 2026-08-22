@@ -1,0 +1,9 @@
+# A blank issue almost always arrives without the version, the deployment
+# method or a single log line, and the first reply has to ask for all three.
+# The forms below ask up front instead.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/jnltedev/belegeai/security/policy
+    about: Do not open a public issue. Report it privately, see the security policy.

@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest something BelegeAI should be able to do
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before requesting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve
+      description: |
+        The situation you run into, not the feature itself. A described
+        problem can be solved in ways nobody had thought of yet; a described
+        solution can only be built or refused.
+      placeholder: |
+        I file the same supplier every month and retype the sender each time.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What you have in mind
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried or considered instead
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which part
+      multiple: true
+      options:
+        - Web interface
+        - Extraction and AI
+        - Chat and search
+        - IMAP or API import
+        - Administration and users
+        - Notifications
+        - Deployment and configuration
+        - iOS app
+    validations:
+      required: true
