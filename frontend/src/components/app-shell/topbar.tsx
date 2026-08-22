@@ -34,8 +34,14 @@ export function Topbar({ user, isAdmin, logoUrl }: { user: SessionUser; isAdmin:
   const menuRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(pathname === "/documents" ? (searchParams.get("search") ?? "") : "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Never while the user is typing in it. applySearch() navigates, and the
+    // route echoes back through searchParams a moment later - by then more
+    // characters have usually arrived, and writing the older URL value back
+    // over them is what swallowed them ("20.03.2026" ending up "2003.2026").
+    if (searchRef.current !== null && document.activeElement === searchRef.current) return;
     setQuery(pathname === "/documents" ? (searchParams.get("search") ?? "") : "");
   }, [pathname, searchParams]);
 
@@ -110,6 +116,7 @@ export function Topbar({ user, isAdmin, logoUrl }: { user: SessionUser; isAdmin:
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" strokeWidth={2} />
           <input
+            ref={searchRef}
             type="search"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}

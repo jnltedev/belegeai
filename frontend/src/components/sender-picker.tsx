@@ -27,9 +27,15 @@ export function SenderPicker({ value, onChange }: { value: string; onChange: (na
   // GmbH") get caught before they turn into a whole new sender entity.
   const [similar, setSimilar] = useState<Sender[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
+    // Adopted only while the user is elsewhere. Typing here calls onChange,
+    // which lands in the parent's metadata and comes straight back as this
+    // prop; writing it back into a field being typed in drops whatever was
+    // entered in between.
+    if (inputRef.current !== null && document.activeElement === inputRef.current) return;
     setQuery(value);
   }, [value]);
 
@@ -125,6 +131,7 @@ export function SenderPicker({ value, onChange }: { value: string; onChange: (na
   return (
     <div ref={containerRef} className="relative">
       <input
+        ref={inputRef}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

@@ -236,19 +236,9 @@ export function DocumentsExplorer({
           )}
 
           <div className="flex items-center gap-1.5 text-sm text-muted">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setParam("dateFrom", e.target.value || null)}
-              className="rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+            <FilterDateInput value={dateFrom} onCommit={(v) => setParam("dateFrom", v)} />
             <span>{t("documentsExplorer.dateRangeTo")}</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setParam("dateTo", e.target.value || null)}
-              className="rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+            <FilterDateInput value={dateTo} onCommit={(v) => setParam("dateTo", v)} />
           </div>
 
           {hasActiveFilters && (
@@ -360,6 +350,61 @@ export function DocumentsExplorer({
         }}
       />
     </div>
+  );
+}
+
+// How long a date field is left alone after the last keystroke before its
+// value reaches the URL.
+const DATE_COMMIT_DELAY_MS = 500;
+
+/// A date filter that owns its value while it is being filled in.
+///
+/// Bound straight to the URL it was unusable: a half-typed date reads as an
+/// empty value, so every keystroke pushed a route, refetched the list and
+/// re-rendered the field underneath the cursor. Add the three-second poll
+/// re-rendering the same component and the segments being typed into ended
+/// up cleared or jumped over.
+///
+/// Nothing outside can disturb the field now: the URL is written only once
+/// typing has settled, and an incoming value is only adopted while the user
+/// is somewhere else.
+function FilterDateInput({ value, onCommit }: { value: string; onCommit: (value: string | null) => void }) {
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isFocused = () => inputRef.current !== null && document.activeElement === inputRef.current;
+
+  useEffect(() => {
+    if (isFocused()) return;
+    setDraft(value);
+  }, [value]);
+
+  useEffect(() => () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  }, []);
+
+  function commit(next: string) {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    if ((next || null) !== (value || null)) onCommit(next || null);
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="date"
+      value={draft}
+      onChange={(e) => {
+        const next = e.target.value;
+        setDraft(next);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => commit(next), DATE_COMMIT_DELAY_MS);
+      }}
+      // Leaving the field applies it at once rather than after the delay.
+      onBlur={() => commit(draft)}
+      className="rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+    />
   );
 }
 
