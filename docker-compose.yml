@@ -39,10 +39,9 @@ services:
       retries: 10
     restart: unless-stopped
   backend:
-    # Published by .github/workflows/docker-publish.yml. To build from source
-    # instead, add the override file:
+    # To build from source instead of pulling, add the override file:
     #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-    image: ${IMAGE_NAMESPACE:-jnltedev}/belegeai-backend:${IMAGE_TAG:-latest}
+    image: jnltedev/belegeai-backend:${IMAGE_TAG:-latest}
     ports:
       # Loopback only - the frontend reaches it over the internal docker
       # network (API_INTERNAL_URL below) and proxies everything publicly.
@@ -96,7 +95,7 @@ services:
     restart: unless-stopped
 
   ingest-worker:
-    image: ${IMAGE_NAMESPACE:-jnltedev}/belegeai-ingest-worker:${IMAGE_TAG:-latest}
+    image: jnltedev/belegeai-ingest-worker:${IMAGE_TAG:-latest}
     environment:
       - DATABASE_URL=postgres://belege:belege@postgres:5432/belegeai
       - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY}
@@ -110,7 +109,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ${IMAGE_NAMESPACE:-jnltedev}/belegeai-frontend:${IMAGE_TAG:-latest}
+    image: jnltedev/belegeai-frontend:${IMAGE_TAG:-latest}
     ports:
       - "${FRONTEND_PORT:-3005}:3005"
     environment:

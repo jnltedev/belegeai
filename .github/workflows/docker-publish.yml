@@ -1,18 +1,5 @@
 name: Publish container images
 
-# Builds the three application images and pushes them to Docker Hub.
-#
-# Requires two repository secrets, set once under
-# Settings -> Secrets and variables -> Actions:
-#
-#   DOCKERHUB_USERNAME  your Docker Hub account name
-#   DOCKERHUB_TOKEN     an access token from Docker Hub -> Account settings
-#                       -> Personal access tokens, with Read & Write scope.
-#                       Not your password: a token can be revoked on its own.
-#
-# Without them the job is skipped rather than failing, so a fork can run the
-# rest of the repository's workflows untouched.
-
 on:
   push:
     branches: [main]
@@ -57,7 +44,7 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker Hub credentials are not configured; skipping publish."
+            echo "::notice::Registry credentials are not configured; skipping publish."
           fi
 
       # arm64 is emulated, which is slow but means the images run unmodified

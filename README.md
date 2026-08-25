@@ -68,8 +68,8 @@ open sign-up to leave exposed by accident.
 
 ### Running from source instead of published images
 
-`docker-compose.yml` pulls the images built by this repository's CI. To build
-them from your checkout instead:
+`docker-compose.yml` pulls the published images. To build them from your
+checkout instead:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
@@ -91,7 +91,6 @@ The ones worth knowing about:
 | `AI_EMBEDDING_MODEL` | Optional, powers semantic search. Empty uses the provider's default. |
 | `DEFAULT_LANGUAGE` | `en` or `de`, for logged-out pages and new accounts. |
 | `LOGO_FILENAME` | A file in `./branding/`, or a full `https://` URL. |
-| `IMAGE_NAMESPACE` | Docker Hub account the images are pulled from. |
 | `MAX_UPLOAD_MB` | Per-file upload limit. Defaults to 25. |
 
 Only the frontend container is meant to be reachable from outside. It proxies
