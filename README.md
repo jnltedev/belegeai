@@ -123,10 +123,11 @@ Two differences worth knowing before you switch:
 
 **Ollama cannot read a PDF.** A PDF reaches the model as its embedded text
 layer, so anything digitally produced (invoices, official letters, bank
-statements) works normally. A **scan has no text layer** and neither do the
-PDFs a phone scanner app assembles from camera images; those are filed for
-manual entry with no suggestion. The same receipt uploaded as a photo does
-work, because an image goes to the model as an image.
+statements) works normally. So do scans made with the BelegeAI iOS app: it
+reads every page on the phone and writes the text into the PDF invisibly
+before uploading. A scan from somewhere else, with no text layer of its own,
+is filed for manual entry with no suggestion; uploading it as a photo instead
+works, because an image goes to the model as an image.
 
 **Uploads stop waiting.** A local model needs minutes per document, so the
 file is filed into the review queue immediately and analysed in the
