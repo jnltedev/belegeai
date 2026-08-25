@@ -44,6 +44,9 @@ const typeSuggestionSchema = z.object({
 });
 
 export class AnthropicProvider implements AiProvider {
+  // Answers fast enough that the upload can wait for the result.
+  readonly prefersBackgroundExtraction = false;
+
   private readonly client: Anthropic;
   private readonly model: string;
 

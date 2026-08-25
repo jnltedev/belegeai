@@ -26,6 +26,14 @@ export interface ChatMessage {
 }
 
 export interface AiProvider {
+  // Whether an upload should be filed first and analysed afterwards, instead
+  // of the browser waiting for the result. True for local models, where a
+  // single document takes minutes on hardware without a large GPU. A
+  // property of the provider rather than a check on its name in the upload
+  // route: "too slow to wait for" is a fact about the model, not a special
+  // case of uploading.
+  readonly prefersBackgroundExtraction: boolean;
+
   // knownSenders lets extraction snap a "sender"-typed field to an existing,
   // correctly-spelled sender name instead of inventing a slightly different
   // variant every time the same real-world company shows up (different

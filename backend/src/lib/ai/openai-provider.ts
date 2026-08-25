@@ -41,6 +41,9 @@ const typeSuggestionSchema = z.object({
 });
 
 export class OpenAiProvider implements AiProvider {
+  // Answers fast enough that the upload can wait for the result.
+  readonly prefersBackgroundExtraction = false;
+
   private readonly client: OpenAI;
   private readonly model: string;
   private readonly embeddingModel: string;

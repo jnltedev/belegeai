@@ -40,8 +40,17 @@ const envSchema = z.object({
   // changing AI_PROVIDER and the key rather than learning a new naming
   // scheme. Leaving AI_API_KEY empty disables extraction entirely and the
   // archive stays fully manual - a supported mode, not a broken one.
-  AI_PROVIDER: z.enum(["gemini", "openai", "anthropic"]).default("gemini"),
+  AI_PROVIDER: z.enum(["gemini", "openai", "anthropic", "ollama"]).default("gemini"),
   AI_API_KEY: z.string().optional().default(""),
+  // Where a self-hosted Ollama server can be reached, e.g.
+  // http://llm.example.lan:11434. Only read by the ollama provider, which
+  // needs no API key at all - for that provider this is what decides whether
+  // AI is configured. AI_API_KEY stays optional there and is sent as a
+  // bearer token, for a server put behind an authenticating reverse proxy.
+  AI_BASE_URL: z
+    .string()
+    .optional()
+    .transform((value) => (value ?? "").trim().replace(/\/+$/, "")),
   // Empty means "the provider's sensible default" - see lib/ai/defaults.ts.
   AI_MODEL: z.string().optional().default(""),
   // Powers the chat widget's semantic search. Optional: Anthropic offers no

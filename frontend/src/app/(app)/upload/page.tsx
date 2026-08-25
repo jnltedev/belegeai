@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, FileText, Mail, Paperclip } from "lucide-react";
+import { CheckCircle2, Clock, FileText, Mail, Paperclip } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { DropzoneUpload, type UploadedFile } from "@/components/dropzone-upload";
 import { DocumentMetadataForm } from "@/components/document-metadata-form";
@@ -61,6 +61,13 @@ export default function UploadPage() {
           {topLevel.map((file) => {
             const isEmail = EMAIL_MIMETYPES.has(file.mimetype);
             const attachments = pendingFiles.filter((f) => f.parentFileKey === file.fileKey);
+
+            // The row already exists on the server. Rendering the metadata
+            // form here would create a second document for the same file.
+            if (file.queued) {
+              return <QueuedFileCard key={file.fileKey} filename={file.originalFilename} />;
+            }
+
             return (
               <div key={file.fileKey} className="flex flex-col gap-3">
                 <PendingFileCard
@@ -92,6 +99,31 @@ export default function UploadPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/// Shown when the archive runs on a local model: the file is stored and
+/// waiting in the review queue, and analysis catches up in the background.
+function QueuedFileCard({ filename }: { filename: string }) {
+  const { t } = useTranslation();
+  return (
+    <Card className="p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted">
+          <Clock className="h-4.5 w-4.5" strokeWidth={1.75} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{filename}</p>
+          <p className="mt-1 text-sm text-muted">{t("uploadPage.queued.description")}</p>
+          <Link
+            href="/import-queue"
+            className="mt-2 inline-block text-sm font-medium text-accent hover:underline"
+          >
+            {t("uploadPage.queued.openQueue")}
+          </Link>
+        </div>
+      </div>
+    </Card>
   );
 }
 

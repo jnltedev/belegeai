@@ -49,6 +49,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export class GeminiProvider implements AiProvider {
+  // Answers fast enough that the upload can wait for the result.
+  readonly prefersBackgroundExtraction = false;
+
   private readonly client: GoogleGenAI;
   private readonly model: string;
   private readonly embeddingModel: string;

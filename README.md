@@ -101,9 +101,44 @@ MinIO and the backend bind to `127.0.0.1` regardless of the ports you set.
 | Google Gemini | yes | yes | yes |
 | OpenAI | yes | yes | yes |
 | Anthropic Claude | yes | yes | no |
+| Ollama (local) | text PDFs and images | yes | yes |
 
 Anthropic publishes no embedding endpoint, so with Claude the chat falls back
 to full-text and fuzzy retrieval. Everything else behaves identically.
+
+### Running the model yourself
+
+Set `AI_PROVIDER=ollama` and point `AI_BASE_URL` at your own
+[Ollama](https://ollama.com) server. Nothing then leaves your network. The
+server belongs on its own machine, not in this compose stack: a model wants a
+GPU or a lot of memory, the archive does not.
+
+```bash
+# on the Ollama machine
+ollama pull qwen3-vl:8b
+ollama pull nomic-embed-text
+```
+
+Two differences worth knowing before you switch:
+
+**Ollama cannot read a PDF.** A PDF reaches the model as its embedded text
+layer, so anything digitally produced (invoices, official letters, bank
+statements) works normally. A **scan has no text layer** and neither do the
+PDFs a phone scanner app assembles from camera images; those are filed for
+manual entry with no suggestion. The same receipt uploaded as a photo does
+work, because an image goes to the model as an image.
+
+**Uploads stop waiting.** A local model needs minutes per document, so the
+file is filed into the review queue immediately and analysed in the
+background rather than holding up the browser.
+
+The embedding model must output 768 numbers, which is what the archive
+stores. `nomic-embed-text` does. If yours does not, semantic search stays off
+and says so in the log rather than failing every save.
+
+Ollama has no authentication of its own. Keep the server on a private
+network, or put it behind a reverse proxy expecting a bearer token and set
+that token as `AI_API_KEY`.
 
 ### Notifications
 

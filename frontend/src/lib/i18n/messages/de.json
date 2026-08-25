@@ -414,6 +414,8 @@
   "updateNotice.viewRelease": "Release Notes zu {{name}} lesen",
   "uploadPage.attachmentFrom": "Anhang aus „{{title}}“",
   "uploadPage.description": "Lade ein oder mehrere Dokumente hoch und ergänze anschließend die Metadaten. E-Mails (.eml/.msg) werden automatisch ausgelesen - enthaltene PDF- und Bildanhänge werden als eigene, verknüpfte Dokumente vorgeschlagen.",
+  "uploadPage.queued.description": "Gespeichert und in der Import-Warteschlange. Das lokale Modell analysiert es im Hintergrund, das kann einige Minuten dauern.",
+  "uploadPage.queued.openQueue": "Import-Warteschlange öffnen",
   "uploadPage.saved": "Gespeichert.",
   "uploadPage.title": "Dokument hochladen",
   "uploadPage.viewDocument": "Dokument ansehen",

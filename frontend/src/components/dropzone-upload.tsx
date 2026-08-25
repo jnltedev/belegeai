@@ -15,6 +15,10 @@ export interface UploadedFile {
   suggestion?: ExtractionSuggestion | null;
   suggestedTitle?: string;
   emailAttachments?: UploadedFile[];
+  /// True when the server filed the document straight into the review queue
+  /// instead of analysing it while we waited. A local model takes minutes,
+  /// so there is nothing to fill in yet.
+  queued?: boolean;
 }
 
 interface SelectedFile {

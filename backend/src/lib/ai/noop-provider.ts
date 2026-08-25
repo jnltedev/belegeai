@@ -1,6 +1,9 @@
 import type { AiProvider, DocumentTypeFieldOption, ExtractionSuggestion } from "./types.js";
 
 export class NoopProvider implements AiProvider {
+  // Answers fast enough that the upload can wait for the result.
+  readonly prefersBackgroundExtraction = false;
+
   async extractDocument(): Promise<ExtractionSuggestion | null> {
     return null;
   }

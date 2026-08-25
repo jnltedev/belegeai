@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { BadRequestError } from "../../lib/errors.js";
 import type { DocumentTypeOption, ExtractionSuggestion } from "../../lib/ai/types.js";
 import { parseEmail, isEmailMimetype } from "../../lib/email-ingest/index.js";
+import { ingestFile } from "../../lib/ingest.js";
+import { currentUser } from "../../lib/auth-guard.js";
 import { DOCUMENT_MIME_TYPES } from "../../plugins/minio.js";
 import { documentTypes as documentTypesTable, senders, type DocumentTypeField } from "../../db/schema/index.js";
 
@@ -21,6 +23,11 @@ interface UploadResult {
   suggestion: UploadSuggestion | null;
   suggestedTitle?: string;
   emailAttachments?: UploadResult[];
+  /// Set when the file was filed straight into the review queue instead of
+  /// being analysed while the browser waited. The client must then skip its
+  /// metadata form: the row already exists, and filling one in would create
+  /// a second one for the same file.
+  queued?: boolean;
 }
 
 interface AvailableType {
@@ -108,10 +115,39 @@ export default async function uploadRoute(fastify: FastifyInstance) {
 
     const parts = request.files();
     const results: UploadResult[] = [];
+    // Minutes per document on a local model, so the browser is not kept
+    // waiting for one. See AiProvider.prefersBackgroundExtraction.
+    const defer = fastify.ai.prefersBackgroundExtraction;
+    const user = currentUser(request);
 
     for await (const part of parts) {
       const buffer = await part.toBuffer();
       const stored = await fastify.storage.putObjectHashed(buffer, part.filename);
+
+      if (defer) {
+        // Stored above rather than left entirely to the background job, so an
+        // unsupported file type or a broken object store is still reported
+        // now, while the user is looking at the upload screen.
+        //
+        // ingestFile does the rest: it unpacks emails, files attachments with
+        // their parent link, extracts, and embeds. Exactly the path a mailbox
+        // takes, which is why nothing here needs to be rebuilt. It stores the
+        // file once more, which costs one redundant write and no duplicate
+        // row: object keys are content hashes.
+        void ingestFile(fastify, buffer, part.filename, "manual", undefined, user.id).catch((err) => {
+          fastify.log.warn({ err, filename: part.filename }, "Background ingest of an upload failed");
+        });
+
+        results.push({
+          fileKey: stored.fileKey,
+          originalFilename: part.filename,
+          sizeBytes: stored.sizeBytes,
+          mimetype: stored.mimetype,
+          suggestion: null,
+          queued: true,
+        });
+        continue;
+      }
 
       if (isEmailMimetype(stored.mimetype)) {
         const parsed = await parseEmail(buffer, stored.mimetype);

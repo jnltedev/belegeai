@@ -91,7 +91,10 @@ export interface IngestResult {
   attachments: Document[];
 }
 
-type IngestSource = "imap" | "api";
+/// Where a document came from. "manual" belongs here because a local model
+/// is too slow to keep an upload waiting: the browser hands the file over
+/// and this same path files it, exactly as it does for a mailbox.
+export type IngestSource = "manual" | "imap" | "api";
 
 // How many levels of nested mail get opened. The message that arrived is
 // level 0, so 3 unpacks a forward of a forward of a forward. Deeper than that
@@ -117,6 +120,7 @@ interface IngestWalk {
   seenFileKeys: Set<string>;
   created: Document[];
   truncated: boolean;
+  uploadedBy?: string;
 }
 
 // Auto-creates documents with no human confirming the AI suggestion first -
@@ -130,6 +134,10 @@ export async function ingestFile(
   filename: string,
   source: IngestSource,
   apiKeyId?: string,
+  /// Who handed the file over. Null for a mailbox or an API key, since
+  /// nobody with a session was involved; set for a manual upload so the
+  /// archive still records who filed it.
+  uploadedBy?: string,
 ): Promise<IngestResult> {
   const types = await fastify.db.select().from(documentTypesTable);
   const knownSenders = (await fastify.db.select({ name: senders.name }).from(senders)).map((s) => s.name);
@@ -150,6 +158,7 @@ export async function ingestFile(
       types,
       raw,
       apiKeyId,
+      uploadedBy,
     });
     void generateAndStoreEmbedding(fastify, document.id);
     notifyImport(fastify, source, document.id);
@@ -164,6 +173,7 @@ export async function ingestFile(
     seenFileKeys: new Set(),
     created: [],
     truncated: false,
+    uploadedBy,
   };
 
   await ingestMail(fastify, walk, { buffer, filename, mimetype, depth: 0 });
@@ -193,6 +203,11 @@ export async function ingestFile(
 // deliberately sends nothing - being notified about what you just did
 // yourself is noise, not news.
 function notifyImport(fastify: FastifyInstance, source: IngestSource, documentId: string): void {
+  // Never for something the user just handed over themselves. A notification
+  // exists to report what arrived unattended; telling someone about the file
+  // they dropped into the browser seconds ago is noise.
+  if (source === "manual") return;
+
   void fastify.push
     .notifyImport({ source, documentId })
     .catch((err) => fastify.log.warn({ err }, "Push notification for import failed"));
@@ -330,6 +345,7 @@ async function ingestAttachment(
     raw,
     parentDocumentId,
     apiKeyId: walk.apiKeyId,
+    uploadedBy: walk.uploadedBy,
   });
 
   walk.seenFileKeys.add(stored.fileKey);
@@ -398,6 +414,7 @@ async function createPendingDocument(
     raw: ExtractionSuggestion | null;
     parentDocumentId?: string;
     apiKeyId?: string;
+    uploadedBy?: string;
   },
 ): Promise<Document> {
   const documentTypeId = resolveDocumentTypeId(opts.types, opts.raw);
@@ -427,6 +444,7 @@ async function createPendingDocument(
         pendingAiSuggestion: (opts.raw as unknown as Record<string, unknown>) ?? null,
         parentDocumentId: opts.parentDocumentId,
         apiKeyId: opts.apiKeyId,
+        uploadedBy: opts.uploadedBy,
       })
       .returning();
 

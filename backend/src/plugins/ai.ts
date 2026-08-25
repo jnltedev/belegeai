@@ -6,15 +6,27 @@ import { NoopProvider } from "../lib/ai/noop-provider.js";
 import { GeminiProvider } from "../lib/ai/gemini-provider.js";
 import { OpenAiProvider } from "../lib/ai/openai-provider.js";
 import { AnthropicProvider } from "../lib/ai/anthropic-provider.js";
+import { OllamaProvider } from "../lib/ai/ollama-provider.js";
 
 export default fp(async function aiPlugin(fastify: FastifyInstance) {
   const env = fastify.env;
 
-  if (env.AI_API_KEY.length === 0) {
-    // A supported mode, not a failure: without a key the archive works
-    // exactly as it did before extraction existed - every upload is filled
-    // in by hand.
-    fastify.log.warn("AI_API_KEY not set - AI extraction disabled, uploads remain fully manual.");
+  // What counts as "configured" differs by provider: a local Ollama server
+  // needs no key, so requiring one would make the provider impossible to
+  // switch on. Either way, not configured is a supported mode rather than a
+  // failure - the archive then works exactly as it did before extraction
+  // existed, with every upload filled in by hand.
+  const missing =
+    env.AI_PROVIDER === "ollama"
+      ? env.AI_BASE_URL.length === 0
+        ? "AI_BASE_URL"
+        : null
+      : env.AI_API_KEY.length === 0
+        ? "AI_API_KEY"
+        : null;
+
+  if (missing) {
+    fastify.log.warn(`${missing} not set - AI extraction disabled, uploads remain fully manual.`);
     fastify.decorate("ai", new NoopProvider());
     return;
   }
@@ -39,10 +51,16 @@ export default fp(async function aiPlugin(fastify: FastifyInstance) {
         );
       }
       break;
+    case "ollama":
+      provider = new OllamaProvider(env.AI_BASE_URL, model, embeddingModel, env.AI_API_KEY);
+      break;
     default:
       provider = new GeminiProvider(env.AI_API_KEY, model, embeddingModel);
   }
 
-  fastify.log.info({ provider: env.AI_PROVIDER, model }, "AI provider ready");
+  fastify.log.info(
+    { provider: env.AI_PROVIDER, model, ...(env.AI_PROVIDER === "ollama" ? { baseUrl: env.AI_BASE_URL } : {}) },
+    "AI provider ready",
+  );
   fastify.decorate("ai", provider);
 });
