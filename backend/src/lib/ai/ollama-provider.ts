@@ -321,13 +321,23 @@ Schlage vor:
     }
   }
 
-  /// nomic-embed-text is trained with mandatory task prefixes and loses
-  /// noticeable retrieval quality without them: a stored document and the
-  /// question asked about it are embedded differently on purpose. Other
-  /// models have no such convention, and prefixing their input would just be
-  /// two stray words at the front of every text.
+  /// Some embedding models are trained with task prefixes and lose noticeable
+  /// retrieval quality without them: a stored document and the question asked
+  /// about it are meant to be embedded differently. The wording is specific
+  /// to the model, so it is matched by name rather than guessed. A model with
+  /// no such convention gets the raw text, because prefixing it would only
+  /// put a few stray words at the front of everything.
   private prefixed(text: string, taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY"): string {
-    if (!this.embeddingModel.startsWith("nomic-embed")) return text;
-    return taskType === "RETRIEVAL_QUERY" ? `search_query: ${text}` : `search_document: ${text}`;
+    const isQuery = taskType === "RETRIEVAL_QUERY";
+
+    if (this.embeddingModel.startsWith("nomic-embed")) {
+      return isQuery ? `search_query: ${text}` : `search_document: ${text}`;
+    }
+    if (this.embeddingModel.startsWith("embeddinggemma")) {
+      // Google's own wording. The document side carries an empty title field
+      // on purpose: that is the documented form when no title is supplied.
+      return isQuery ? `task: search result | query: ${text}` : `title: none | text: ${text}`;
+    }
+    return text;
   }
 }

@@ -7,9 +7,8 @@ plain language, or simply ask it questions.
 
 Everything runs on your own machine. Documents live in your own object
 storage, metadata in your own database. The only thing that ever leaves your
-server is the text sent to the AI provider you configure - and if you leave
-that unconfigured, nothing leaves at all and the archive works as a
-well-organised manual filing cabinet.
+server is the text sent to the AI provider you configure. Point it at a local
+model instead, or leave it unconfigured, and nothing leaves at all.
 
 ## What it does
 
@@ -28,13 +27,17 @@ searches the archive three ways at once - full text, fuzzy word matching and
 semantic similarity - then answers from the documents it found, citing them.
 
 **Stays yours.** Postgres, MinIO and two Node services. No accounts anywhere
-else, no telemetry, no phoning home.
+else, no telemetry, no phoning home. The AI can run on your own hardware too:
+point it at an Ollama server and no document text ever crosses your network
+boundary.
 
 ## Requirements
 
 - Docker and Docker Compose
 - Roughly 2 GB of RAM
-- Optionally, an API key for Google Gemini, OpenAI or Anthropic
+- For the AI features, either an API key for Google Gemini, OpenAI or
+  Anthropic, or an [Ollama](https://ollama.com) server of your own. Both are
+  optional; without either, the archive works as a manual filing cabinet.
 
 ## Getting started
 
@@ -81,9 +84,11 @@ The ones worth knowing about:
 | --- | --- |
 | `PUBLIC_APP_URL` | The address the app is reachable at. Used for links in outgoing email. |
 | `COOKIE_SECURE` | Set to `true` once TLS terminates in front of the app. |
-| `AI_PROVIDER` | `gemini`, `openai` or `anthropic`. |
-| `AI_API_KEY` | Leave empty to run the archive entirely manually. |
+| `AI_PROVIDER` | `gemini`, `openai`, `anthropic` or `ollama`. |
+| `AI_API_KEY` | Your provider's key. Leave empty to run the archive entirely manually. Not needed by `ollama`, which is switched on by `AI_BASE_URL` instead; set it there only if your server sits behind a proxy wanting a bearer token. |
+| `AI_BASE_URL` | Address of your own Ollama server, e.g. `http://llm.example.lan:11434`. Read only when `AI_PROVIDER=ollama`. |
 | `AI_MODEL` | Optional. Empty uses the provider's default. |
+| `AI_EMBEDDING_MODEL` | Optional, powers semantic search. Empty uses the provider's default. |
 | `DEFAULT_LANGUAGE` | `en` or `de`, for logged-out pages and new accounts. |
 | `LOGO_FILENAME` | A file in `./branding/`, or a full `https://` URL. |
 | `IMAGE_NAMESPACE` | Docker Hub account the images are pulled from. |
@@ -119,6 +124,30 @@ ollama pull qwen3-vl:8b
 ollama pull nomic-embed-text
 ```
 
+Those two are only the defaults. Any Ollama model works, chosen with
+`AI_MODEL` and `AI_EMBEDDING_MODEL`, as long as it meets one condition each.
+
+**The document model** has to follow a JSON schema, which Ollama enforces for
+any model, though a small one keeps to it less reliably. Vision is only
+needed if you upload photos; for PDFs a plain text model is enough.
+`qwen3-vl`, `gemma4` and `minicpm-v` all read images, `glm-ocr` is built for
+exactly this kind of page.
+
+**The embedding model** has to output exactly 768 numbers, because that is
+the width the archive stores. Two do:
+
+| Model | Dimensions | Works |
+| --- | --- | --- |
+| `nomic-embed-text` | 768 | yes, the default |
+| `embeddinggemma` | 768 | yes |
+| `mxbai-embed-large` | 1024 | no |
+| `bge-m3` | 1024 | no |
+| `all-minilm` | 384 | no |
+
+A model that returns the wrong width does not break anything: semantic search
+switches itself off with a line in the log, and the chat answers from
+full-text and fuzzy retrieval instead.
+
 Two differences worth knowing before you switch:
 
 **Ollama cannot read a PDF.** A PDF reaches the model as its embedded text
@@ -132,10 +161,6 @@ works, because an image goes to the model as an image.
 **Uploads stop waiting.** A local model needs minutes per document, so the
 file is filed into the review queue immediately and analysed in the
 background rather than holding up the browser.
-
-The embedding model must output 768 numbers, which is what the archive
-stores. `nomic-embed-text` does. If yours does not, semantic search stays off
-and says so in the log rather than failing every save.
 
 Ollama has no authentication of its own. Keep the server on a private
 network, or put it behind a reverse proxy expecting a bearer token and set
