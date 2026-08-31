@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    # Documentation-only commits do not change an image.
+    # Documentation-only commits do not change an image. Deliberately short:
+    # paths-ignore has no negation, so an entry for .github here would also
+    # swallow changes to this very file and leave a fix to it untested.
     paths-ignore:
       - "**.md"
       - "docs/**"
-      - ".github/**"
-      - "!.github/workflows/docker-publish.yml"
   workflow_dispatch:
 
 jobs:
