@@ -1,6 +1,6 @@
 import { ImapFlow, type FetchMessageObject } from "imapflow";
 import type { MailboxSettings } from "./settings.js";
-import { ingestEmail } from "./backend-client.js";
+import { ingestEmail, type IngestError } from "./backend-client.js";
 
 // Backstop against a single runaway message blocking the mailbox forever -
 // independent of MAX_UPLOAD_MB (not plumbed into this process), just large
@@ -79,6 +79,15 @@ async function handleMessage(
     await ingestEmail(filename, raw);
     await client.messageFlagsAdd(msg.uid, ["\\Seen"], { uid: true });
   } catch (err) {
+    // A rejection the backend will repeat verbatim is marked read anyway.
+    // Otherwise one unusable message is re-sent on every poll for as long as
+    // it sits in the mailbox, which is a loop nobody notices until the log
+    // is full of it.
+    if ((err as IngestError).permanent) {
+      log(`Message from ${fromAddress} cannot be imported, marking it read: ${(err as Error).message}`);
+      await client.messageFlagsAdd(msg.uid, ["\\Seen"], { uid: true });
+      return;
+    }
     // Not marked \Seen - retried on the next poll cycle instead of silently
     // dropping a message just because the backend was briefly unavailable.
     log(`Ingest failed for message from ${fromAddress}, will retry next cycle: ${(err as Error).message}`);

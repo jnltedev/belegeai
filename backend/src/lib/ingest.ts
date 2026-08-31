@@ -254,29 +254,21 @@ async function ingestMail(fastify: FastifyInstance, walk: IngestWalk, node: Mail
   const isCarrier = node.depth === 0;
   let mailDocument: Document | undefined;
 
-  // A file hanging straight off the message that arrived has nothing else it
-  // could belong to: there is no inner mail to be its parent. Dropping the
-  // envelope in that case leaves the document in the archive with no way back
-  // to what it came with, which is what made IMAP-imported invoices arrive
-  // unconnected while the same file uploaded by hand did not.
+  // The message that arrived is never filed. Mailing a document to the
+  // archive is a way of delivering it, not a document in itself, and the
+  // covering note is of no interest once what it carried has been taken out.
+  // A mail found *inside* one is the opposite: somebody deliberately kept
+  // that mail, so it is filed like any other attachment.
   //
-  // So the envelope is filed up front exactly when it carries such a file,
-  // and still skipped when it merely wraps another mail, since that inner
-  // mail is its own anchor and is the thing somebody meant to keep.
-  const carriesLooseFiles =
-    isCarrier &&
-    node.openAttachments !== false &&
-    parsed.attachments.some(
-      (attachment) => !isEmailMimetype(attachment.mimetype) && !attachment.mimetype.startsWith("image/"),
-    );
-
-  if (!isCarrier || carriesLooseFiles) {
+  // The cost of this rule, accepted knowingly: a file attached straight to
+  // the arriving message has no mail document to be linked to, because none
+  // exists.
+  if (!isCarrier) {
     mailDocument = await createMailDocument(fastify, walk, parsed, node);
     if (!mailDocument) return;
   }
 
   const attachmentParentId = mailDocument?.id ?? node.parentDocumentId;
-  const createdBefore = walk.created.length;
   const attachments = node.openAttachments === false ? [] : parsed.attachments;
 
   for (const attachment of attachments) {
@@ -292,12 +284,10 @@ async function ingestMail(fastify: FastifyInstance, walk: IngestWalk, node: Mail
     }
   }
 
-  // The envelope is also kept when it carried nothing at all - otherwise a
-  // plain forwarded note would vanish without a trace, which is the one
-  // failure nobody would notice. Skipped when it was already filed above.
-  if (isCarrier && !mailDocument && walk.created.length === createdBefore) {
-    await createMailDocument(fastify, walk, parsed, node);
-  }
+  // Nothing here for a message that carried no files: it is not filed as a
+  // fallback either. A mail with nothing attached has nothing the archive
+  // wants, and routes/internal/imap answers that plainly so the worker can
+  // move on rather than retrying it forever.
 }
 
 async function ingestAttachment(

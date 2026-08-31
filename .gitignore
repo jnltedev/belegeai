@@ -11,3 +11,7 @@ frontend/public/pdf-wasm/
 branding/*
 !branding/.gitkeep
 !branding/README.md
+
+# Test mails: never in version control, they contain personal data.
+*.eml
+*.msg

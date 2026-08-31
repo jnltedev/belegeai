@@ -12,6 +12,16 @@ export async function ingestEmail(filename: string, raw: Buffer): Promise<void> 
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Backend rejected ingest (${res.status}): ${body}`);
+    const error = new Error(`Backend rejected ingest (${res.status}): ${body}`) as IngestError;
+    // A 4xx is the backend's considered judgement about this message, and
+    // sending the identical bytes again cannot change it. Only a transport
+    // problem or a 5xx is worth another attempt.
+    error.permanent = res.status >= 400 && res.status < 500;
+    throw error;
   }
+}
+
+export interface IngestError extends Error {
+  /// True when retrying would only produce the same answer.
+  permanent?: boolean;
 }
