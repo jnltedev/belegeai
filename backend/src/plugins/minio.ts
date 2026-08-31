@@ -95,6 +95,15 @@ export default fp(async function minioPlugin(fastify: FastifyInstance) {
       // has neither magic bytes nor necessarily a filename.
       knownMimetype?: string,
     ): Promise<StoredFile> {
+      // Checked here and not only inside detectMimetype, because the branch
+      // below skips that function entirely whenever the caller already knows
+      // the type. That is exactly the path a nested message takes, so an
+      // empty part slipped straight through and became a zero-byte document
+      // that shows nothing and can never be read.
+      if (buffer.length === 0) {
+        throw new BadRequestError("The file is empty");
+      }
+
       const mimetype =
         knownMimetype && ALLOWED_MIME_TYPES.has(knownMimetype)
           ? knownMimetype
