@@ -15,17 +15,19 @@ const EMAIL_MIMETYPES = new Set(["message/rfc822", "application/vnd.ms-outlook"]
 interface PendingFile extends UploadedFile {
   savedDocumentId: string | null;
   parentFileKey?: string;
+  /// How deep in the mail this came from, for the indentation. A forwarded
+  /// invoice sits at 2: your covering note contains the original mail, and
+  /// the original mail contains the PDF.
+  depth: number;
 }
 
-function flattenUpload(file: UploadedFile): PendingFile[] {
+/// Flattens the whole tree depth first, so a mail found inside a mail is
+/// listed under the one it actually came from rather than being dropped.
+function flattenUpload(file: UploadedFile, parentFileKey?: string, depth = 0): PendingFile[] {
   const { emailAttachments, ...rest } = file;
-  const parent: PendingFile = { ...rest, savedDocumentId: null };
-  const children: PendingFile[] = (emailAttachments ?? []).map((att) => ({
-    ...att,
-    savedDocumentId: null,
-    parentFileKey: file.fileKey,
-  }));
-  return [parent, ...children];
+  const self: PendingFile = { ...rest, savedDocumentId: null, parentFileKey, depth };
+  const children = (emailAttachments ?? []).flatMap((att) => flattenUpload(att, file.fileKey, depth + 1));
+  return [self, ...children];
 }
 
 export default function UploadPage() {
@@ -38,14 +40,15 @@ export default function UploadPage() {
   }, []);
 
   function handleUploaded(files: UploadedFile[]) {
-    setPendingFiles((prev) => [...prev, ...files.flatMap(flattenUpload)]);
+    // Wrapped, not passed by reference: flatMap hands the callback an index
+    // as its second argument, which flattenUpload would take for a parent key.
+    setPendingFiles((prev) => [...prev, ...files.flatMap((file) => flattenUpload(file))]);
   }
 
   function handleSaved(fileKey: string, documentId: string) {
     setPendingFiles((prev) => prev.map((f) => (f.fileKey === fileKey ? { ...f, savedDocumentId: documentId } : f)));
   }
 
-  const topLevel = pendingFiles.filter((f) => !f.parentFileKey);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -56,43 +59,46 @@ export default function UploadPage() {
         <DropzoneUpload onUploaded={handleUploaded} />
       </div>
 
-      {topLevel.length > 0 && (
-        <div className="mt-8 flex flex-col gap-6">
-          {topLevel.map((file) => {
+      {pendingFiles.length > 0 && (
+        <div className="mt-8 flex flex-col gap-4">
+          {pendingFiles.map((file) => {
             const isEmail = EMAIL_MIMETYPES.has(file.mimetype);
-            const attachments = pendingFiles.filter((f) => f.parentFileKey === file.fileKey);
+            const parent = file.parentFileKey
+              ? pendingFiles.find((f) => f.fileKey === file.parentFileKey)
+              : undefined;
 
             // The row already exists on the server. Rendering the metadata
             // form here would create a second document for the same file.
-            if (file.queued) {
-              return <QueuedFileCard key={file.fileKey} filename={file.originalFilename} />;
-            }
+            const card = file.queued ? (
+              <QueuedFileCard filename={file.originalFilename} />
+            ) : (
+              <PendingFileCard
+                file={file}
+                documentTypes={documentTypes}
+                icon={parent ? (isEmail ? Mail : Paperclip) : isEmail ? Mail : FileText}
+                label={
+                  parent
+                    ? t("uploadPage.attachmentFrom", {
+                        title: parent.suggestedTitle ?? parent.originalFilename,
+                      })
+                    : undefined
+                }
+                // Undefined until the parent exists, which is why saving is
+                // held back below: without it the two would be filed as
+                // unrelated documents and could never be linked afterwards.
+                parentDocumentId={parent?.savedDocumentId ?? undefined}
+                blockedByParent={parent !== undefined && parent.savedDocumentId === null}
+                onSaved={(documentId) => handleSaved(file.fileKey, documentId)}
+              />
+            );
 
             return (
-              <div key={file.fileKey} className="flex flex-col gap-3">
-                <PendingFileCard
-                  file={file}
-                  documentTypes={documentTypes}
-                  icon={isEmail ? Mail : FileText}
-                  onSaved={(documentId) => handleSaved(file.fileKey, documentId)}
-                />
-                {attachments.length > 0 && (
-                  <div className="ml-6 flex flex-col gap-3 border-l-2 border-border pl-6">
-                    {attachments.map((att) => (
-                      <PendingFileCard
-                        key={att.fileKey}
-                        file={att}
-                        documentTypes={documentTypes}
-                        icon={Paperclip}
-                        label={t("uploadPage.attachmentFrom", {
-                          title: file.suggestedTitle ?? file.originalFilename,
-                        })}
-                        parentDocumentId={file.savedDocumentId ?? undefined}
-                        onSaved={(documentId) => handleSaved(att.fileKey, documentId)}
-                      />
-                    ))}
-                  </div>
-                )}
+              <div
+                key={file.fileKey}
+                style={{ marginLeft: file.depth * 24 }}
+                className={file.depth > 0 ? "border-l-2 border-border pl-6" : undefined}
+              >
+                {card}
               </div>
             );
           })}
@@ -133,6 +139,7 @@ function PendingFileCard({
   icon: Icon,
   label,
   parentDocumentId,
+  blockedByParent,
   onSaved,
 }: {
   file: PendingFile;
@@ -140,6 +147,10 @@ function PendingFileCard({
   icon: typeof FileText;
   label?: string;
   parentDocumentId?: string;
+  /// True while the email this came from is still unsaved. The form is held
+  /// back rather than saved without a link, because the connection between a
+  /// mail and its attachment cannot be established after the fact.
+  blockedByParent?: boolean;
   onSaved: (documentId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -164,6 +175,8 @@ function PendingFileCard({
             {t("uploadPage.viewDocument")}
           </Link>
         </p>
+      ) : blockedByParent ? (
+        <p className="text-sm text-muted">{t("uploadPage.saveParentFirst")}</p>
       ) : (
         <DocumentMetadataForm
           file={file}

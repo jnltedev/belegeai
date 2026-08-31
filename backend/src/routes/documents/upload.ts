@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { BadRequestError } from "../../lib/errors.js";
 import type { DocumentTypeOption, ExtractionSuggestion } from "../../lib/ai/types.js";
 import { parseEmail, isEmailMimetype } from "../../lib/email-ingest/index.js";
-import { ingestFile } from "../../lib/ingest.js";
+import { ingestFile, MAX_EMAIL_DEPTH } from "../../lib/ingest.js";
 import { currentUser } from "../../lib/auth-guard.js";
 import { DOCUMENT_MIME_TYPES } from "../../plugins/minio.js";
 import { documentTypes as documentTypesTable, senders, type DocumentTypeField } from "../../db/schema/index.js";
@@ -75,26 +75,96 @@ async function extractSuggestion(
   }
 }
 
+/// The metadata an email carries in its own headers. No AI call: a mail
+/// states its sender, recipient and date outright, and guessing at what it
+/// already says would be both slower and worse.
+function emailSuggestion(parsed: Awaited<ReturnType<typeof parseEmail>>, emailTypeId: string | null): UploadSuggestion {
+  const fieldValues: Record<string, unknown> = {};
+  if (parsed.sender) fieldValues.sender = parsed.sender;
+  if (parsed.recipient) fieldValues.recipient = parsed.recipient;
+  if (parsed.date) fieldValues.date = parsed.date.slice(0, 10);
+
+  return {
+    documentTypeId: emailTypeId,
+    documentTypeName: "E-Mail",
+    fieldValues,
+    suggestedTags: [],
+    fullText: parsed.textBody ?? (parsed.htmlBody ? stripHtml(parsed.htmlBody) : null),
+  };
+}
+
+/// Walks one email's attachments, opening any email found among them.
+///
+/// Forwarding an invoice puts the document two levels down: your covering
+/// note contains the original mail, and the original mail contains the PDF.
+/// Stopping at the first level, which is what this did before, meant the
+/// nested mail was dropped for not being a PDF or an image, and the PDF
+/// inside it was never reached at all. The same file forwarded to a watched
+/// mailbox came out right, because that path has always walked the tree.
 async function processEmailAttachments(
   fastify: FastifyInstance,
-  attachments: Array<{ filename: string; buffer: Buffer }>,
+  attachments: Array<{ filename: string; buffer: Buffer; mimetype?: string }>,
   types: AvailableType[],
   knownSenders: string[],
+  emailTypeId: string | null,
+  depth: number,
+  /// Content hashes already turned into a result. A forwarding chain
+  /// re-attaches the same invoice at every hop, and without this the same
+  /// bytes would come back as several separate documents to fill in.
+  seen: Set<string>,
 ): Promise<UploadResult[]> {
   const results: UploadResult[] = [];
+
   for (const attachment of attachments) {
     let stored;
     try {
-      stored = await fastify.storage.putObjectHashed(attachment.buffer, attachment.filename);
+      // The declared type is passed along: a nested mail arrives with no
+      // usable filename from some clients, and plain-text RFC822 has no
+      // magic bytes to fall back on.
+      stored = await fastify.storage.putObjectHashed(attachment.buffer, attachment.filename, attachment.mimetype);
     } catch {
-      continue; // not a PDF/image (or another unsupported type) - skip silently
+      continue; // not a supported type, or empty - skip silently
     }
+    if (seen.has(stored.fileKey)) continue;
+
+    if (isEmailMimetype(stored.mimetype)) {
+      seen.add(stored.fileKey);
+      const parsed = await parseEmail(attachment.buffer, stored.mimetype);
+      // Beyond the limit the mail is still filed, with its real subject and
+      // sender, it is simply not taken apart. Losing it silently would be
+      // worse than an unopened envelope.
+      const children =
+        depth >= MAX_EMAIL_DEPTH
+          ? []
+          : await processEmailAttachments(
+              fastify,
+              parsed.attachments,
+              types,
+              knownSenders,
+              emailTypeId,
+              depth + 1,
+              seen,
+            );
+
+      results.push({
+        fileKey: stored.fileKey,
+        originalFilename: attachment.filename,
+        sizeBytes: stored.sizeBytes,
+        mimetype: stored.mimetype,
+        suggestion: emailSuggestion(parsed, emailTypeId),
+        suggestedTitle: parsed.subject ?? undefined,
+        emailAttachments: children,
+      });
+      continue;
+    }
+
     if (!DOCUMENT_MIME_TYPES.has(stored.mimetype)) continue;
     // Image attachments on an email are almost always signature logos or
     // tracking pixels, not real documents - never surface them as their own
     // attachment document, and never spend an AI call on them.
     if (stored.mimetype.startsWith("image/")) continue;
 
+    seen.add(stored.fileKey);
     const raw = await extractSuggestion(fastify, attachment.buffer, stored.mimetype, types, knownSenders);
     results.push({
       fileKey: stored.fileKey,
@@ -151,25 +221,22 @@ export default async function uploadRoute(fastify: FastifyInstance) {
 
       if (isEmailMimetype(stored.mimetype)) {
         const parsed = await parseEmail(buffer, stored.mimetype);
-        const fieldValues: Record<string, unknown> = {};
-        if (parsed.sender) fieldValues.sender = parsed.sender;
-        if (parsed.recipient) fieldValues.recipient = parsed.recipient;
-        if (parsed.date) fieldValues.date = parsed.date.slice(0, 10);
-
-        const emailAttachments = await processEmailAttachments(fastify, parsed.attachments, types, knownSenders);
+        const emailAttachments = await processEmailAttachments(
+          fastify,
+          parsed.attachments,
+          types,
+          knownSenders,
+          emailType?.id ?? null,
+          1,
+          new Set([stored.fileKey]),
+        );
 
         results.push({
           fileKey: stored.fileKey,
           originalFilename: part.filename,
           sizeBytes: stored.sizeBytes,
           mimetype: stored.mimetype,
-          suggestion: {
-            documentTypeId: emailType?.id ?? null,
-            documentTypeName: "E-Mail",
-            fieldValues,
-            suggestedTags: [],
-            fullText: parsed.textBody ?? (parsed.htmlBody ? stripHtml(parsed.htmlBody) : null),
-          },
+          suggestion: emailSuggestion(parsed, emailType?.id ?? null),
           suggestedTitle: parsed.subject ?? undefined,
           emailAttachments,
         });

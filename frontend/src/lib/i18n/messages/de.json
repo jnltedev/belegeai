@@ -416,6 +416,7 @@
   "uploadPage.description": "Lade ein oder mehrere Dokumente hoch und ergänze anschließend die Metadaten. E-Mails (.eml/.msg) werden automatisch ausgelesen - enthaltene PDF- und Bildanhänge werden als eigene, verknüpfte Dokumente vorgeschlagen.",
   "uploadPage.queued.description": "Gespeichert und in der Import-Warteschlange. Das lokale Modell analysiert es im Hintergrund, das kann einige Minuten dauern.",
   "uploadPage.queued.openQueue": "Import-Warteschlange öffnen",
+  "uploadPage.saveParentFirst": "Speichere zuerst die E-Mail darüber, damit dieser Anhang mit ihr verknüpft bleibt.",
   "uploadPage.saved": "Gespeichert.",
   "uploadPage.title": "Dokument hochladen",
   "uploadPage.viewDocument": "Dokument ansehen",

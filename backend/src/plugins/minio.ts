@@ -39,6 +39,14 @@ export interface Storage {
 /// deciding afterwards leaves objects in the bucket that nothing references,
 /// and the delete path only ever cleans up objects a document points at.
 export async function detectMimetype(buffer: Buffer, originalFilename?: string): Promise<string> {
+  // Rejected before anything else. An empty .eml passes the extension check
+  // below and parses into a perfectly valid email with no subject, no sender
+  // and no body, so it gets filed as a document that shows nothing and can
+  // never be extracted from. Better to say the file is empty.
+  if (buffer.length === 0) {
+    throw new BadRequestError("The file is empty");
+  }
+
   const detected = await fileTypeFromBuffer(buffer);
   let mimetype: string | undefined = detected?.mime;
 

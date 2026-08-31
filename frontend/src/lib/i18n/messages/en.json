@@ -416,6 +416,7 @@
   "uploadPage.description": "Upload one or more documents and fill in the metadata afterwards. Emails (.eml/.msg) are read automatically - PDF and image attachments they contain are suggested as their own, linked documents.",
   "uploadPage.queued.description": "Stored and waiting in the review queue. The local model is analysing it in the background; this can take a few minutes.",
   "uploadPage.queued.openQueue": "Open the review queue",
+  "uploadPage.saveParentFirst": "Save the email above first, so this attachment stays linked to it.",
   "uploadPage.saved": "Saved.",
   "uploadPage.title": "Upload document",
   "uploadPage.viewDocument": "View document",

@@ -100,7 +100,7 @@ export type IngestSource = "manual" | "imap" | "api";
 // level 0, so 3 unpacks a forward of a forward of a forward. Deeper than that
 // a mail is still filed - with its real subject and sender - just not taken
 // apart, because losing it silently would be worse than an unopened envelope.
-const MAX_EMAIL_DEPTH = 3;
+export const MAX_EMAIL_DEPTH = 3;
 
 // Ceiling on documents produced by one incoming message. Every PDF costs a
 // synchronous AI extraction, so a long forwarding chain with a dozen repeated
